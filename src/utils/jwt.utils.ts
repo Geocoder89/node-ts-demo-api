@@ -24,7 +24,7 @@ const signJWt = (
 }
 
 
-const verifyJwt = (token: string,keyName: "accessTokenPublicKey")=>{
+const verifyJwt = (token: string,keyName: "accessTokenPublicKey" | "refreshTokenPublicKey")=>{
 
 
     const publicKey = Buffer.from(config.get<string>(keyName),"base64").toString("ascii")

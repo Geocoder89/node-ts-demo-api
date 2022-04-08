@@ -1,15 +1,18 @@
 import { NextFunction, Request,Response } from "express";
 import {get} from 'lodash'
+import { reissueAccessToken } from "../services/session.service";
 import { verifyJwt } from "../utils/jwt.utils";
 const deserializeUser = async (req: Request,res:Response,next:NextFunction)=>{
 
-    // we get the access to the access token by removing the bearer keyword from what returns from the req.headers.authorization
+    // we get the access to the access token by removing the bearer keyword from what returns from the req.headers.authorization same as the refresh token
     const accessToken = get(req, "headers.authorization", "").replace(
         /^Bearer\s/,
         ""
       );
 
-    console.log('access token is',accessToken)
+
+    const refreshToken = get(req,"headers.x-refresh")
+   
 
 
     if(!accessToken) {
@@ -17,11 +20,25 @@ const deserializeUser = async (req: Request,res:Response,next:NextFunction)=>{
     }
 
     const {decoded,expired} = verifyJwt(accessToken,"accessTokenPublicKey")
-    console.log('decoded',decoded)
-    console.log('expired',expired)
+    
     if(decoded) {
         res.locals.user = decoded;
         return next();
+    }
+
+
+    if(expired && refreshToken) {
+        const newAccessToken = await reissueAccessToken({refreshToken})
+
+        if(newAccessToken) {
+            res.setHeader('x-access-token',newAccessToken)
+        }
+
+        const result = verifyJwt(newAccessToken as string,"accessTokenPublicKey")
+
+        res.locals.user = result.decoded;
+        return next()
+        
     }
 
     return next();
